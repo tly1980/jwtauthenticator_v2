@@ -7,7 +7,7 @@ Authenticate to Jupyterhub using a query parameter for the JSONWebToken, or by a
 This package can be installed with pip:
 
 ```
-pip install jupyterhub-jwtauthenticator
+pip install jupyterhub-jwtauthenticator-v2
 ```
 
 Alternately, you can clone this repository and run:
@@ -23,7 +23,7 @@ You should edit your :file:`jupyterhub_config.py` to set the authenticator class
 
 ##### For authentication and local user creation
 ```
-c.JupyterHub.authenticator_class = 'jwtauthenticator.jwtauthenticator.JSONWebTokenLocalAuthenticator'
+c.JupyterHub.authenticator_class = 'jwtauthenticator.JSONWebTokenLocalAuthenticator'
 ```
 
 This class is derived from LocalAuthenticator and therefore provides features such as the ability to add local accounts through the admin interface if configured to do so.
@@ -31,7 +31,7 @@ This class is derived from LocalAuthenticator and therefore provides features su
 ##### For authentication of the token only
 
 ```
-c.JupyterHub.authenticator_class = 'jwtauthenticator.jwtauthenticator.JSONWebTokenAuthenticator'
+c.JupyterHub.authenticator_class = 'jwtauthenticator.JSONWebTokenAuthenticator'
 ```
 
 ##### Required configuration
@@ -39,15 +39,35 @@ c.JupyterHub.authenticator_class = 'jwtauthenticator.jwtauthenticator.JSONWebTok
 You'll also need to set some configuration options including the location of the signing certificate (in PEM format), field containing the userPrincipalName or sAMAccountName/username, and the expected audience of the JSONWebToken. This last part is optional, if you set audience to an empty string then the authenticator will skip the validation of that field.
 
 ```
-# one of "secret" or "signing_certificate" must be given.  If both, then "secret" will be the signing method used.
-c.JSONWebTokenAuthenticator.secret = '<insert-256-bit-secret-key-here>'            # The secrect key used to generate the given token
+# Only one of two following fields must be set.  
+# If both, then "secret" will be the signing method used.
+# The secrect key used to generate the given token
+c.JSONWebTokenAuthenticator.secret = '<secret-key>'   
+         
 # -OR-
-c.JSONWebTokenAuthenticator.signing_certificate = '/foo/bar/adfs-signature.crt'    # The certificate used to sign the incoming JSONWebToken, must be in PEM Format
+# The certificate used to sign the incoming JSONWebToken, must be in PEM Format
+c.JSONWebTokenAuthenticator.signing_certificate = '/foo/bar/adfs-signature.crt'
 
-c.JSONWebTokenAuthenticator.username_claim_field = 'upn'                           # The claim field contianing the username/sAMAccountNAme/userPrincipalName
-c.JSONWebTokenAuthenticator.expected_audience = 'https://myApp.domain.local/'               # This config option should match the aud field of the JSONWebToken, empty string to disable the validation of this field.
-#c.JSONWebLocalTokenAuthenticator.create_system_users = True                       # This will enable local user creation upon authentication, requires JSONWebTokenLocalAuthenticator
-#c.JSONWebTokenAuthenticator.header_name = 'Authorization'                         # default value
+# The claim field contianing the username/sAMAccountNAme/userPrincipalName
+c.JSONWebTokenAuthenticator.username_claim_field = 'username'
+
+# This config option should match the aud field of the JSONWebToken, empty string to disable the validation of this field.
+c.JSONWebTokenAuthenticator.expected_audience = 'https://myApp.domain.local/'
+
+# This will enable local user creation upon authentication, requires JSONWebTokenLocalAuthenticator
+c.JSONWebLocalTokenAuthenticator.create_system_users = True
+
+# Only the one of three follwing sources for JWT token must be set at the time. If you want to disable inspection
+# of some of sources, set corresponding value to '' 
+
+# Header name to retrieve JWT token
+c.JSONWebTokenAuthenticator.header_name = 'X-Auth-Token'  
+ 
+# Cookie name to retrieve JWT token                      
+c.JSONWebTokenAuthenticator.cookie_name = 'auth_token'
+
+# Query param to retrieve JWT token                         
+c.JSONWebTokenAuthenticator.param_name = 'auth_token'
 ```
 
 You should be able to start jupyterhub. :)

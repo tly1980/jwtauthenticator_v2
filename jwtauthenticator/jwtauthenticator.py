@@ -2,52 +2,56 @@ from jupyterhub.handlers import BaseHandler
 from jupyterhub.auth import Authenticator
 from jupyterhub.auth import LocalAuthenticator
 from jupyterhub.utils import url_path_join
-from tornado import gen, web
-from traitlets import Unicode, Bool
-from jose import jwt
+import jwt
+from tornado import (
+    gen,
+    web,
+)
+from traitlets import (
+    Bool,
+    List,
+    Unicode,
+)
+
 
 class JSONWebTokenLoginHandler(BaseHandler):
-
-    def get(self):
+    async def get(self):
         header_name = self.authenticator.header_name
+        cookie_name = self.authenticator.cookie_name
         param_name = self.authenticator.param_name
-        header_is_authorization = self.authenticator.header_is_authorization
 
-        auth_header_content = self.request.headers.get(header_name, "")
-        auth_cookie_content = self.get_cookie("XSRF-TOKEN", "")
+        auth_header_content = self.request.headers.get(header_name, "") if header_name else None
+        auth_cookie_content = self.get_cookie(cookie_name, "") if cookie_name else None
+        auth_param_content = self.get_argument(param_name, default="") if param_name else None
+
         signing_certificate = self.authenticator.signing_certificate
         secret = self.authenticator.secret
+        algorithms = self.authenticator.algorithms
+
         username_claim_field = self.authenticator.username_claim_field
+        extract_username = self.authenticator.extract_username
         audience = self.authenticator.expected_audience
-        tokenParam = self.get_argument(param_name, default=False)
 
-        if auth_header_content and tokenParam:
-           raise web.HTTPError(400)
+        if bool(auth_header_content) + bool(auth_cookie_content) + bool(auth_param_content) > 1:
+            raise web.HTTPError(400)
         elif auth_header_content:
-           if header_is_authorization:
-              # we should not see "token" as first word in the AUTHORIZATION header, if we do it could mean someone coming in with a stale API token
-              if auth_header_content.split()[0] != "bearer":
-                 raise web.HTTPError(403)
-              token = auth_header_content.split()[1]
-           else:
-              token = auth_header_content
+            token = auth_header_content
         elif auth_cookie_content:
-           token = auth_cookie_content
-        elif tokenParam:
-           token = tokenParam
+            token = auth_cookie_content
+        elif auth_param_content:
+            token = auth_param_content
         else:
-           raise web.HTTPError(401)
+            raise web.HTTPError(401)
 
-        claims = "";
         if secret:
-            claims = self.verify_jwt_using_secret(token, secret, audience)
+            claims = self.verify_jwt_using_secret(token, secret, algorithms, audience)
         elif signing_certificate:
             claims = self.verify_jwt_with_claims(token, signing_certificate, audience)
         else:
-           raise web.HTTPError(401)
+            raise web.HTTPError(401)
 
-        username = self.retrieve_username(claims, username_claim_field)
-        user = self.user_from_username(username)
+        username = self.retrieve_username(claims, username_claim_field, extract_username=extract_username)
+        user = await self.auth_to_user({'name': username})
         self.set_login_cookie(user)
 
         _url = url_path_join(self.hub.server.base_url, 'home')
@@ -59,41 +63,47 @@ class JSONWebTokenLoginHandler(BaseHandler):
 
     @staticmethod
     def verify_jwt_with_claims(token, signing_certificate, audience):
-        # If no audience is supplied then assume we're not verifying the audience field.
-        if audience == "":
+        opts = {}
+        if not audience:
             opts = {"verify_aud": False}
-        else:
-            opts = {}
         with open(signing_certificate, 'r') as rsa_public_key_file:
             return jwt.decode(token, rsa_public_key_file.read(), audience=audience, options=opts)
 
     @staticmethod
-    def verify_jwt_using_secret(json_web_token, secret, audience):
-        # If no audience is supplied then assume we're not verifying the audience field.
-        if audience == "":
+    def verify_jwt_using_secret(json_web_token, secret, algorithms, audience):
+        opts = {}
+        if not audience:
             opts = {"verify_aud": False}
-        else:
-            opts = {}
-        
-        return jwt.decode(json_web_token, secret, algorithms=list(jwt.ALGORITHMS.SUPPORTED), audience=audience, options=opts)
+        return jwt.decode(json_web_token, secret, algorithms=algorithms, audience=audience, options=opts)
 
     @staticmethod
-    def retrieve_username(claims, username_claim_field):
-        # retrieve the username from the claims
+    def retrieve_username(claims, username_claim_field, extract_username):
         username = claims[username_claim_field]
-        if "@" in username:
-            # process username as if email, pull out string before '@' symbol
-            return username.split("@")[0]
-
-        else:
-            # assume not username and return the user
-            return username
+        if extract_username:
+            if "@" in username:
+                return username.split("@")[0]
+        return username
 
 
 class JSONWebTokenAuthenticator(Authenticator):
     """
     Accept the authenticated JSON Web Token from header.
     """
+    header_name = Unicode(
+        default_value='X-Auth-Token',
+        config=True,
+        help="""HTTP header to inspect for the authenticated JSON Web Token.""")
+
+    cookie_name = Unicode(
+        config=True,
+        default_value='auth_token',
+        help="""The name of the cookie field used to specify the JWT token""")
+
+    param_name = Unicode(
+        config=True,
+        default_value='auth_token',
+        help="""The name of the query parameter used to specify the JWT token""")
+
     signing_certificate = Unicode(
         config=True,
         help="""
@@ -103,12 +113,29 @@ class JSONWebTokenAuthenticator(Authenticator):
         """
     )
 
+    secret = Unicode(
+        config=True,
+        help="""Shared secret key for siging JWT token. If defined, it overrides any setting for signing_certificate""")
+
+    algorithms = List(
+        default_value=['HS256'],
+        config=True,
+        help="""Specify which algorithms you would like to permit when validating the JWT""")
+
     username_claim_field = Unicode(
-        default_value='upn',
+        default_value='username',
         config=True,
         help="""
         The field in the claims that contains the user name. It can be either a straight username,
         of an email/userPrincipalName.
+        """
+    )
+
+    extract_username = Bool(
+        default_value=True,
+        config=True,
+        help="""
+        Set to true to split username_claim_field and take the part before the first `@`
         """
     )
 
@@ -117,25 +144,6 @@ class JSONWebTokenAuthenticator(Authenticator):
         config=True,
         help="""HTTP header to inspect for the authenticated JSON Web Token."""
     )
-
-    header_name = Unicode(
-        default_value='Authorization',
-        config=True,
-        help="""HTTP header to inspect for the authenticated JSON Web Token.""")
-        
-    header_is_authorization = Bool(
-        default_value=True,
-        config=True,
-        help="""Treat the inspected header as an Authorization header.""")
-
-    param_name = Unicode(
-        config=True,
-        default_value='access_token',
-        help="""The name of the query parameter used to specify the JWT token""")
-
-    secret = Unicode(
-        config=True,
-        help="""Shared secret key for siging JWT token.  If defined, it overrides any setting for signing_certificate""")
 
     def get_handlers(self, app):
         return [
