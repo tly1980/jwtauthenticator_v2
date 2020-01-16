@@ -43,11 +43,14 @@ class JSONWebTokenLoginHandler(BaseHandler):
         else:
             raise web.HTTPError(401)
 
-        if secret:
-            claims = self.verify_jwt_using_secret(token, secret, algorithms, audience)
-        elif signing_certificate:
-            claims = self.verify_jwt_with_claims(token, signing_certificate, audience)
-        else:
+        try:
+            if secret:
+                claims = self.verify_jwt_using_secret(token, secret, algorithms, audience)
+            elif signing_certificate:
+                claims = self.verify_jwt_with_claims(token, signing_certificate, audience)
+            else:
+                raise web.HTTPError(401)
+        except jwt.exceptions.InvalidTokenError:
             raise web.HTTPError(401)
 
         username = self.retrieve_username(claims, username_claim_field, extract_username=extract_username)
