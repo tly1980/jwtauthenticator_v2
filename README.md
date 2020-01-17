@@ -60,6 +60,12 @@ c.JSONWebLocalTokenAuthenticator.create_system_users = True
 # Only the one of three follwing sources for JWT token must be set at the time. If you want to disable inspection
 # of some of sources, set corresponding value to '' 
 
+# URL for redirecting to in the case of invalid auth token
+c.JSONWebTokenAuthenticator.auth_url = 'https://auth.example.com' 
+
+# Name of query param for auth_url to pass return URL
+c.JSONWebTokenAuthenticator.retpath_param = 'retpath' 
+
 # Header name to retrieve JWT token
 c.JSONWebTokenAuthenticator.header_name = 'X-Auth-Token'  
  

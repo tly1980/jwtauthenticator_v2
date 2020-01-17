@@ -32,6 +32,22 @@ class JSONWebTokenLoginHandler(BaseHandler):
         extract_username = self.authenticator.extract_username
         audience = self.authenticator.expected_audience
 
+        auth_url = self.authenticator.auth_url
+        retpath_param = self.authenticator.retpath_param
+
+        _url = url_path_join(self.hub.server.base_url, 'home')
+        next_url = self.get_argument('next', default=False)
+        if next_url:
+            _url = next_url
+
+        if auth_url and retpath_param:
+            auth_url += ("{prefix}{param}=https://{host}{url}".format(
+                prefix='&' if '?' in auth_url else '?',
+                param=retpath_param,
+                host=self.request.host,
+                url=_url,
+            ))
+
         if bool(auth_header_content) + bool(auth_cookie_content) + bool(auth_param_content) > 1:
             raise web.HTTPError(400)
         elif auth_header_content:
@@ -41,7 +57,7 @@ class JSONWebTokenLoginHandler(BaseHandler):
         elif auth_param_content:
             token = auth_param_content
         else:
-            raise web.HTTPError(401)
+            return self.auth_failed(auth_url)
 
         try:
             if secret:
@@ -49,20 +65,21 @@ class JSONWebTokenLoginHandler(BaseHandler):
             elif signing_certificate:
                 claims = self.verify_jwt_with_claims(token, signing_certificate, audience)
             else:
-                raise web.HTTPError(401)
+                return self.auth_failed(auth_url)
         except jwt.exceptions.InvalidTokenError:
-            raise web.HTTPError(401)
+            return self.auth_failed(auth_url)
 
         username = self.retrieve_username(claims, username_claim_field, extract_username=extract_username)
         user = await self.auth_to_user({'name': username})
         self.set_login_cookie(user)
 
-        _url = url_path_join(self.hub.server.base_url, 'home')
-        next_url = self.get_argument('next', default=False)
-        if next_url:
-             _url = next_url
-
         self.redirect(_url)
+
+    def auth_failed(self, redirect_url):
+        if redirect_url:
+            self.redirect(redirect_url)
+        else:
+            raise web.HTTPError(401)
 
     @staticmethod
     def verify_jwt_with_claims(token, signing_certificate, audience):
@@ -92,6 +109,14 @@ class JSONWebTokenAuthenticator(Authenticator):
     """
     Accept the authenticated JSON Web Token from header.
     """
+    auth_url = Unicode(
+        config=True,
+        help="""URL for redirecting to in the case of invalid auth token""")
+
+    retpath_param = Unicode(
+        config=True,
+        help="""Name of query param for auth_url to pass return URL""")
+
     header_name = Unicode(
         default_value='X-Auth-Token',
         config=True,
