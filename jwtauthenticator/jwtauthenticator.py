@@ -12,6 +12,7 @@ from traitlets import (
     List,
     Unicode,
 )
+from urllib import parse
 
 
 class JSONWebTokenLoginHandler(BaseHandler):
@@ -39,6 +40,10 @@ class JSONWebTokenLoginHandler(BaseHandler):
         next_url = self.get_argument('next', default=False)
         if next_url:
             _url = next_url
+            if param_name:
+                auth_param_content = parse.parse_qs(parse.urlparse(next_url).query).get(param_name, "")
+                if isinstance(auth_param_content, list):
+                    auth_param_content = auth_param_content[0]
 
         if auth_url and retpath_param:
             auth_url += ("{prefix}{param}=https://{host}{url}".format(
@@ -118,18 +123,15 @@ class JSONWebTokenAuthenticator(Authenticator):
         help="""Name of query param for auth_url to pass return URL""")
 
     header_name = Unicode(
-        default_value='X-Auth-Token',
         config=True,
         help="""HTTP header to inspect for the authenticated JSON Web Token.""")
 
     cookie_name = Unicode(
         config=True,
-        default_value='auth_token',
         help="""The name of the cookie field used to specify the JWT token""")
 
     param_name = Unicode(
         config=True,
-        default_value='auth_token',
         help="""The name of the query parameter used to specify the JWT token""")
 
     signing_certificate = Unicode(
