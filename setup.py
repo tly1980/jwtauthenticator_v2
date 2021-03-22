@@ -2,7 +2,7 @@ from setuptools import setup
 
 setup(
     name='jupyterhub-jwtauthenticator-v2',
-    version='2.0.2',
+    version='2.0.3',
     description='JSONWebToken Authenticator for JupyterHub',
     url='https://github.com/izihawa/jwtauthenticator_v2',
     author='ppodolsky',
