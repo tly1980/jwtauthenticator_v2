@@ -171,7 +171,7 @@ class JSONWebTokenAuthenticator(Authenticator):
         help="""Shared secret key for siging JWT token. If defined, it overrides any setting for signing_certificate""")
 
     algorithms = List(
-        default_value=['HS256'],
+        default_value=['ES256', 'HS256'],
         config=True,
         help="""Specify which algorithms you would like to permit when validating the JWT""")
 
