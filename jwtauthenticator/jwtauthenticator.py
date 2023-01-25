@@ -6,7 +6,6 @@ import jwt
 from tornado import (
     gen,
     web,
-    app_log
 )
 from traitlets import (
     Bool,
