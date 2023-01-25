@@ -28,6 +28,7 @@ class JSONWebTokenLoginHandler(BaseHandler):
         auth_param_content = self.get_argument(param_name, default="") if param_name else None
 
         self.log.info(f'auth_header_content: is {auth_header_content}')
+        self.log.info(f'jwt: is {jwt}')
 
         signing_certificate = self.authenticator.signing_certificate
         secret = self.authenticator.secret
