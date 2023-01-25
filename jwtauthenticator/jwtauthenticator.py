@@ -34,6 +34,7 @@ class JSONWebTokenLoginHandler(BaseHandler):
         signing_certificate = self.authenticator.signing_certificate
         secret = self.authenticator.secret
         algorithms = self.authenticator.algorithms
+        self.log.info(f'algorithms: is {algorithms}')
 
         username_claim_field = self.authenticator.username_claim_field
         extract_username = self.authenticator.extract_username
