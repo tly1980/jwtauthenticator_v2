@@ -60,6 +60,10 @@ class JSONWebTokenLoginHandler(BaseHandler):
             ))
 
         self.log.info(f'auth_url: {auth_url}')
+        self.log.info(f'next_url: {next_url}')
+        self.log.info(f'verifying with secret')
+        claims = self.verify_jwt_using_secret(token, secret, algorithms, audience)
+        self.log.info(f'claims: is {claims}')
 
         if bool(auth_header_content) + bool(auth_cookie_content) + bool(auth_param_content) > 1:
             self.log.info(f'aaa')
