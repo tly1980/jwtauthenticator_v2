@@ -59,6 +59,8 @@ class JSONWebTokenLoginHandler(BaseHandler):
                 url=_url,
             ))
 
+        self.log.info(f'auth_url: auth_url')
+
         if bool(auth_header_content) + bool(auth_cookie_content) + bool(auth_param_content) > 1:
             raise web.HTTPError(400)
         elif auth_header_content:
@@ -68,12 +70,15 @@ class JSONWebTokenLoginHandler(BaseHandler):
         elif auth_param_content:
             token = auth_param_content
         else:
+            self.log.info(f'auth_failed: {auth_url}')
             return self.auth_failed(auth_url)
 
         try:
             if secret:
+                self.log.info(f'verifying with secret')
                 claims = self.verify_jwt_using_secret(token, secret, algorithms, audience)
             elif signing_certificate:
+                self.log.info(f'verifying with cert')
                 claims = self.verify_jwt_with_claims(token, signing_certificate, audience)
             else:
                 return self.auth_failed(auth_url)
