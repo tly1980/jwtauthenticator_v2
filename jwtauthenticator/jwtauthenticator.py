@@ -3,6 +3,7 @@ from jupyterhub.auth import Authenticator
 from jupyterhub.auth import LocalAuthenticator
 from jupyterhub.utils import url_path_join
 import jwt
+import request
 from tornado import (
     gen,
     web,
@@ -29,10 +30,11 @@ class JSONWebTokenLoginHandler(BaseHandler):
 
         self.log.info(f'auth_header_content: is {auth_header_content}')
         self.log.info(f'jwt: is {jwt}')
-        self.log.info(f'jwt.__dict__: is {jwt.__dict__}')
+        ## self.log.info(f'jwt.__dict__: is {jwt.__dict__}')
 
         signing_certificate = self.authenticator.signing_certificate
         secret = self.authenticator.secret
+        self.log.info(f'secret: is {secret}')
         algorithms = self.authenticator.algorithms
         self.log.info(f'algorithms: is {algorithms}')
 
