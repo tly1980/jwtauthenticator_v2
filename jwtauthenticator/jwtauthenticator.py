@@ -6,6 +6,7 @@ import jwt
 from tornado import (
     gen,
     web,
+    app_log
 )
 from traitlets import (
     Bool,
@@ -21,9 +22,13 @@ class JSONWebTokenLoginHandler(BaseHandler):
         cookie_name = self.authenticator.cookie_name
         param_name = self.authenticator.param_name
 
+        self.log(f'header_name: is {header_name}')
+
         auth_header_content = self.request.headers.get(header_name, "") if header_name else None
         auth_cookie_content = self.get_cookie(cookie_name, "") if cookie_name else None
         auth_param_content = self.get_argument(param_name, default="") if param_name else None
+
+        self.log(f'auth_header_content: is {auth_header_content}')
 
         signing_certificate = self.authenticator.signing_certificate
         secret = self.authenticator.secret
@@ -35,6 +40,8 @@ class JSONWebTokenLoginHandler(BaseHandler):
 
         auth_url = self.authenticator.auth_url
         retpath_param = self.authenticator.retpath_param
+
+        self.log(f'extract_username: is {extract_username}')
 
         _url = url_path_join(self.hub.server.base_url, 'home')
         next_url = self.get_argument('next', default=False)
@@ -74,7 +81,10 @@ class JSONWebTokenLoginHandler(BaseHandler):
         except jwt.exceptions.InvalidTokenError:
             return self.auth_failed(auth_url)
 
+        self.log(f'claims: is {claims}')
         username = self.retrieve_username(claims, username_claim_field, extract_username=extract_username)
+        self.log(f'username: is {username}')
+
         user = await self.auth_to_user({'name': username})
         self.set_login_cookie(user)
 
