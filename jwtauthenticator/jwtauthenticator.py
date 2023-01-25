@@ -62,6 +62,7 @@ class JSONWebTokenLoginHandler(BaseHandler):
         self.log.info(f'auth_url: {auth_url}')
         self.log.info(f'next_url: {next_url}')
         self.log.info(f'verifying with secret')
+        token = auth_header_content
         claims = self.verify_jwt_using_secret(token, secret, algorithms, audience)
         self.log.info(f'claims: is {claims}')
 
