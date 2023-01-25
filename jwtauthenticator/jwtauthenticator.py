@@ -29,6 +29,7 @@ class JSONWebTokenLoginHandler(BaseHandler):
 
         self.log.info(f'auth_header_content: is {auth_header_content}')
         self.log.info(f'jwt: is {jwt}')
+        self.log.info(f'jwt.__dict__: is {jwt.__dict__}')
 
         signing_certificate = self.authenticator.signing_certificate
         secret = self.authenticator.secret
