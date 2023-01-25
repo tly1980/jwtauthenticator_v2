@@ -3,7 +3,6 @@ from jupyterhub.auth import Authenticator
 from jupyterhub.auth import LocalAuthenticator
 from jupyterhub.utils import url_path_join
 import jwt
-import request
 from tornado import (
     gen,
     web,
